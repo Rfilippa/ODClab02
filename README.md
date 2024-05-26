@@ -1,3 +1,4 @@
 # ODClab02
-ODC group proyect
-integrantes : Renzo Filippa
+ODC group proyect\n
+integrantes :\n
+Renzo Filippa\ņ
