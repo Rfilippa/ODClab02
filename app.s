@@ -5,6 +5,8 @@
 	.equ GPIO_BASE,    0x3f200000
 	.equ GPIO_GPFSEL0, 0x00
 	.equ GPIO_GPLEV0,  0x34
+	.equ DUR_ANI_PLANETAS, 0x0
+	.equ DUR_ANIMACION_TOTAL, 0x0
 
 	.globl main
 
@@ -28,30 +30,88 @@ main:
 	mov x16, 240 		// start del objeto 
 	mov x18, -190       // fin de movimiento
 
+	mov x11, SCREEN_HEIGH // contador decreciente
+
 	mov x6, 50
 	mov x24, 240
 	mov x8, 75
-	mov x12, 1
+	mov x12, 0x200 // tiempo animacion planetas
 	mov x25 , 240
-	mov x27, 105
+	mov x27, xzr
 	mov x28, 75
 	mov x7, xzr
+	mov x21, 0x40
+	movz x25, 0x3300, lsl 16     // color fondo
+	movk x25, 0x1c28, lsl 00
+	//movz x25, 0x0000, lsl 16     // color fondo
+	//movk x25, 0x0000, lsl 00
 
-	movz x21, 0x0, lsl 00 //delay
-
-
+// NO USAR, SON GLOBALES: x0, x1, x2, x21, x18, x6, x8
 
 
 inf:
 	mov x0, x20 			// reset de direccion de x0
 	mov x2, SCREEN_HEIGH         // Y Size
-
+	movz x25, 0x0000, lsl 16     // color fondo
+	movk x25, 0x00ff, lsl 00
+	//add x25, x25 , 1
 loop1:
 	mov x1, SCREEN_WIDTH         // X Size
+	sub x25, x25 , 1
+	//movz x25, 0x0000, lsl 16     // color fondo
+	//movk x25, 0x0000, lsl 00
+	//add x25, x25 , 0xf
 loop0:
-	movz x10, 0x3300, lsl 16     // color fondo
-	movk x10, 0x1c28, lsl 00
-	stur w10,[x0]  			// Colorear el pixel N	
+	//add x25, x25 ,1
+	stur w25,[x0]  			// Colorear el pixel N	
+	
+	b oPaint
+oPaintRet:
+
+	add x0,x0,4    			// Siguiente pixel
+	sub x1,x1,1    			// Decrementar contador X
+	cbnz x1,loop0  			// Si no terminó la fila, salto
+	sub x2,x2,1    			// Decrementar contador Y
+	cbnz x2,loop1  			// Si no es la última fila, salto
+	
+	add x16, x16, #1 		// aumenta un uno el centro en el eje y
+	sub x11, x11, 1			// disminuye contador negativo
+	add x19, x18, x16 		// guarda la suma del eje y actual y el valor de reinicio
+	cmp x19, SCREEN_HEIGH   // compara la altura con el valor anterior
+	b.eq restartmov 		// si son iguales reinicia el eje y
+backinf:
+
+	subs xzr, x11, 70
+	sub x12, x12, 1 // decrece tiempo de animacion en planetas
+	b.mi reducirtamPL
+reducirtamRet:
+
+	subs x21, x21, 1 //delay animacion blackhole
+	b.pl skip2
+	bl movBH
+skip2:
+
+	b inf
+
+restartmov:
+	mov x16, 240 			// reincia el eje y
+	mov x11, SCREEN_HEIGH
+	b backinf 				// vuelve al ciclo
+
+reducirtamPL:
+	add x27, x27, 120
+	b reducirtamRet
+
+movBH:
+	b movHole1
+movHole1Ret:
+	b movHole2
+movHole2Ret:
+	b movHole3
+movHole3Ret:
+	ret
+
+oPaint:
 	b blackHole1
 blackHole1Ret:
 	BL llamas
@@ -60,33 +120,10 @@ llamasRet:
 creturn:	
 	b coheteatras
 coheteRet:
-	add x0,x0,4    			// Siguiente pixel
-	sub x1,x1,1    			// Decrementar contador X
-	cbnz x1,loop0  			// Si no terminó la fila, salto
-	sub x2,x2,1    			// Decrementar contador Y
-	cbnz x2,loop1  			// Si no es la última fila, salto
-//	subs x21, x21, 1		// reductor delay
-//	b.pl inf				// bucle delay general
-	add x16, x16, #1 		// aumenta un uno el centro en el eje y
-	add x19, x18, x16 		//guarda la suma del eje y actual y el valor de reinicio
-	cmp x19, SCREEN_HEIGH   //compara la altura con el valor anterior
-	b.eq restartmov 		// si son iguales reinicia el eje y
-backinf:
-	subs x21, x21, 1		// reductor delay
-	b.pl movRet				// bucle delay general
-	b movHole1
-movHole1Ret:
-	b movHole2
-movHole2Ret:
-	b movHole3
-movHole3Ret:
+	b planetas
+planetasRet:
 
-movRet:
-	b inf
-
-restartmov:
-	mov x16, 240 			// reincia el eje y
-	b backinf 				// vuelve al ciclo
+	b oPaintRet
 
 movHole1:
 	subs xzr, x17, 2
@@ -99,7 +136,7 @@ movHole1:
 	b.ne movHole1Ret
 	mov x7, 0
 	mov x17, 0
-	movz x21, 0x60, lsl 00 //delay 
+	movz x21, 0x20, lsl 00 //delay 
 	b movHole1Ret
 abajo1:
 	sub x28, x28, 1
@@ -147,8 +184,53 @@ abajo3:
 	mov x7, 1
 	b movHole3Ret
 
+planetas:
+	cmp x12, xzr
+	b.le skip1
+	b planeta1 // duracion : 0x130
+skip1:
+	cbnz x12, restartTamPL
+	mov x27, xzr
+restartTamPL:
+	b planeta2
+
+//	b planeta3
+//planeta3Ret:
+//	b planeta4
+//planeta4Ret:
 
 
+planeta1:
+	movz x10, 0xfff0, lsl 00	// color forma
+	movk x10, 0x0080, lsl 16	
+	add x3, x11, 300
+	sub x3, x1, x3 		// setea x3 con el valor de X-320 
+	mul x3, x3, x3			// (x-320).(x-320)
+	sub x4, x2, x11			// setea x4 con el valor de Y actual
+	mul x4, x4, x4			// (y-yi).(y-yi)
+	add x4, x4, x3			// los suma
+	movz x5, 0x700, lsl 0   // ancho del circulo 0x500
+	sub x5, x5, x27 
+	cmp x4, x5				// chequea los valores que forman parte del circulo
+	b.gt planetasRet			// vuelve si es mayor 
+	stur w10,[x0]			// pinta el pixel
+	b planetasRet
+
+planeta2: 
+	movz x10, 0x8080, lsl 00	// color forma
+	movk x10, 0xfff0, lsl 16	
+	sub x3, x11, 400
+	add x3, x1, x3 		// setea x3 con el valor de X-320 
+	mul x3, x3, x3			// (x-320).(x-320)
+	sub x4, x2, x11			// setea x4 con el valor de Y actual
+	mul x4, x4, x4			// (y-yi).(y-yi)
+	add x4, x4, x3			// los suma
+	movz x5, 0x700, lsl 0   // ancho del circulo 0x500
+	sub x5, x5, x27 
+	cmp x4, x5				// chequea los valores que forman parte del circulo
+	b.gt planetasRet			// vuelve si es mayor 
+	stur w10,[x0]			// pinta el pixel
+	b planetasRet
 
 
 nave:
